@@ -772,15 +772,7 @@ async function loadAll() {
   try {
     const promises = [];
     if (cfg.urlBase) promises.push(fetchCSV(cfg.urlBase, true).then(d => { BASE_DATA = d; }));
-    if (cfg.urlKobo) promises.push(fetchCSV(cfg.urlKobo, false).then(d => {
-      KOBO_DATA = d;
-      console.log('[KOBO DEBUG] Total rows:', d.length);
-      if (d.length > 0) {
-        console.log('[KOBO DEBUG] Keys en fila 1:', Object.keys(d[0]));
-        console.log('[KOBO DEBUG] Vivero_Estudio fila 1:', JSON.stringify(d[0]['Vivero_Estudio']));
-        console.log('[KOBO DEBUG] Primeros 5 Vivero_Estudio:', d.slice(0,5).map(r=>r['Vivero_Estudio']));
-      }
-    }));
+    if (cfg.urlKobo) promises.push(fetchCSV(cfg.urlKobo, false).then(d => { KOBO_DATA = d; }));
     if (promises.length === 0) { await loadEmbedded(); return; }
     await Promise.all(promises);
     finishLoad(true);
@@ -1173,6 +1165,33 @@ function buildCatD() {
   document.getElementById('nb-D').textContent = rows.length.toLocaleString();
 }
 
+// Columnas de tipo de aplicación por etapa fenológica
+const TIPO_APLIC_COLS = [
+  { col:'Tipo_de_aplicaci_n_Etapa_1',     etapa:'Etapa 1'   },
+  { col:'Tipo_de_aplicaci_n_Etapa_1_001', etapa:'Etapa 1b'  },
+  { col:'Tipo_de_aplicaci_n_V4_V5',       etapa:'V4-V5'     },
+  { col:'Tipo_de_aplicaci_n_V5_V6',       etapa:'V5-V6'     },
+  { col:'Tipo_de_aplicaci_n_V6_V7',       etapa:'V6-V7'     },
+  { col:'Tipo_de_aplicaci_n_V8_V9',       etapa:'V8-V9'     },
+  { col:'Tipo_de_aplicaci_n_V9_V10',      etapa:'V9-V10'    },
+  { col:'Tipo_de_aplicaci_n_V10_V12',     etapa:'V10-V12'   },
+  { col:'Tipo_de_aplicaci_n_V12',         etapa:'V12'       },
+  { col:'Tipo_de_aplicaci_n_VT',          etapa:'VT'        },
+  { col:'Tipo_de_aplicaci_n_R1_R2',       etapa:'R1-R2'     },
+  { col:'Tipo_de_aplicaci_n_R3_R4',       etapa:'R3-R4'     },
+];
+
+function renderTipoAplic(row) {
+  const items = TIPO_APLIC_COLS
+    .filter(x => row[x.col] && row[x.col].trim() !== '')
+    .map(x => `<span class="chip" style="background:#1e293b;border-color:#334155;color:#94a3b8;font-size:0.68rem">
+      <b style="color:#e3b341">${x.etapa}:</b> ${row[x.col]}
+    </span>`);
+  return items.length
+    ? `<div style="display:flex;flex-wrap:wrap;gap:4px">${items.join('')}</div>`
+    : `<span class="empty-val">—</span>`;
+}
+
 function buildCatE() {
   const rows = filteredKobo;
   const cols = [
@@ -1181,6 +1200,7 @@ function buildCatE() {
     { key:'Riego_efectivo', label:'Riego Efectivo', render:(v)=>v==='si'?`<span class="badge badge-green">Sí</span>`:v==='no'?`<span class="badge badge-red">No</span>`:`<span class="empty-val">—</span>` },
     { key:'Tipo_de_Riego',  label:'Tipo Riego',     render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
     { key:'Etapa',          label:'Etapa',          render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'_tipoAplic',     label:'Tipo Aplicación',render:(_,row)=>renderTipoAplic(row) },
     { key:'Razones',        label:'Razones',        render:(v)=>v||`<span class="empty-val">—</span>` },
     { key:'Fecha Envío',    label:'Fecha Envío',    render:(v)=>v?`<span class="td-mono" style="font-size:0.68rem;color:var(--text2)">${v}</span>`:`<span class="empty-val">—</span>` },
   ];
