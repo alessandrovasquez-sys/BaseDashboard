@@ -540,6 +540,7 @@
 let BASE_DATA = [];
 let KOBO_DATA = [];
 let filteredBase = [];
+let filteredKobo = [];
 let currentPage = 'overview';
 const PAGE_SIZE = 100;
 
@@ -705,7 +706,7 @@ function dismissBanner() {
 // ===================================================================
 // CSV PARSER
 // ===================================================================
-function parseCSV(text) {
+function parseCSV(text, strict = false) {
   const lines = text.replace(/\r\n/g,'\n').replace(/\r/g,'\n').split('\n');
   const headers = parseCSVRow(lines[0]);
   const rows = [];
@@ -719,8 +720,8 @@ function parseCSV(text) {
     if (vals.every(v => !v || !v.trim())) continue;
     const obj = {};
     headers.forEach((h,idx) => obj[h] = (vals[idx] || '').trim());
-    // Ignorar filas sin datos clave (padding de Google Sheets)
-    if (!obj['EXPERIMENTO'] && !obj['PLOT_CODE'] && !obj['DESIGNATION']) continue;
+    // Solo para BASE: ignorar filas sin datos clave (padding de Google Sheets)
+    if (strict && !obj['EXPERIMENTO'] && !obj['PLOT_CODE'] && !obj['DESIGNATION']) continue;
     rows.push(obj);
   }
   return rows;
@@ -742,11 +743,11 @@ function parseCSVRow(line) {
 // ===================================================================
 // FETCH WITH FALLBACK
 // ===================================================================
-async function fetchCSV(url) {
+async function fetchCSV(url, strict = false) {
   const res = await fetch(url);
   if (!res.ok) throw new Error(`HTTP ${res.status}`);
   const text = await res.text();
-  return parseCSV(text);
+  return parseCSV(text, strict);
 }
 
 function normalizeStudy(s) {
@@ -768,8 +769,8 @@ async function loadAll() {
   const cfg = getConfig();
   try {
     const promises = [];
-    if (cfg.urlBase) promises.push(fetchCSV(cfg.urlBase).then(d => { BASE_DATA = d; }));
-    if (cfg.urlKobo) promises.push(fetchCSV(cfg.urlKobo).then(d => { KOBO_DATA = d; }));
+    if (cfg.urlBase) promises.push(fetchCSV(cfg.urlBase, true).then(d => { BASE_DATA = d; }));
+    if (cfg.urlKobo) promises.push(fetchCSV(cfg.urlKobo, false).then(d => { KOBO_DATA = d; }));
     if (promises.length === 0) { await loadEmbedded(); return; }
     await Promise.all(promises);
     finishLoad(true);
@@ -786,8 +787,8 @@ async function loadEmbedded() {
       fetch('BaseDashboard_-_BASE.csv').then(r=>r.ok?r.text():null),
       fetch('KoboToolbox_-_Datos_Kobo.csv').then(r=>r.ok?r.text():null)
     ]);
-    if (b) BASE_DATA = parseCSV(b);
-    if (k) KOBO_DATA = parseCSV(k);
+    if (b) BASE_DATA = parseCSV(b, true);
+    if (k) KOBO_DATA = parseCSV(k, false);
   } catch(e) {}
 
   if (BASE_DATA.length === 0) {
@@ -808,6 +809,7 @@ function finishLoad(fromRemote) {
   saveSnapshot(BASE_DATA);
 
   filteredBase = [...BASE_DATA];
+  filteredKobo = [...KOBO_DATA];
   document.getElementById('loadingDiv').style.display = 'none';
   buildFilters();
   buildAllSections();
@@ -851,6 +853,7 @@ function applyFilters() {
   const est = document.getElementById('fEstudio').value;
   const loc = document.getElementById('fLocation').value;
   const q = (document.getElementById('fSearch').value || '').toLowerCase();
+
   filteredBase = BASE_DATA.filter(r => {
     if (est && r.EXPERIMENTO !== est) return false;
     if (loc && r.LOCATION_NAME !== loc) return false;
@@ -860,6 +863,15 @@ function applyFilters() {
     }
     return true;
   });
+
+  // Filtrar Kobo automáticamente según el estudio seleccionado en BASE
+  if (est) {
+    const estNorm = normalizeStudy(est);
+    filteredKobo = KOBO_DATA.filter(r => normalizeStudy(r.Vivero_Estudio || '') === estNorm);
+  } else {
+    filteredKobo = [...KOBO_DATA];
+  }
+
   buildAllSections();
 }
 
@@ -934,7 +946,7 @@ function buildOverview() {
     { val: withDFF.toLocaleString(),           label: 'Con DFF registrado', sub: 'días flor masc.', color: '#e3b341' },
     { val: withScore.toLocaleString(),         label: 'Con SCORE_P',      sub: 'planta evaluada',  color: '#ff7b72' },
     { val: bcStages,                           label: 'Con BC_stage',     sub: 'estadio consignado',color: '#56d364' },
-    { val: KOBO_DATA.length,                   label: 'Registros Kobo',   sub: 'ambiente/manejo',  color: '#79c0ff' },
+    { val: filteredKobo.length,                label: 'Registros Kobo',   sub: 'ambiente/manejo',  color: '#79c0ff' },
     { val: [...new Set(data.map(r=>r.LOCATION_NAME).filter(Boolean))].length, label: 'Ubicaciones', sub: 'sitios de campo', color: '#e3b341' },
   ];
 
@@ -995,14 +1007,14 @@ function buildOverview() {
     </div>
     <div class="sum-card">
       <div class="sum-card-title">🌽 Kobo — Ambiente</div>
-      ${KOBO_DATA.length === 0 ? '<div class="sum-row"><span class="sum-key" style="color:var(--text2)">Sin datos Kobo cargados</span></div>' :
+      ${filteredKobo.length === 0 ? '<div class="sum-row"><span class="sum-key" style="color:var(--text2)">Sin datos Kobo para este estudio</span></div>' :
         (() => {
           const byVivero = {};
-          KOBO_DATA.forEach(r=>{ const vv=r.Vivero_Estudio||'—'; if(!byVivero[vv]) byVivero[vv]=0; byVivero[vv]++; });
+          filteredKobo.forEach(r=>{ const vv=r.Vivero_Estudio||'—'; if(!byVivero[vv]) byVivero[vv]=0; byVivero[vv]++; });
           const byRiego = {};
-          KOBO_DATA.forEach(r=>{ const t=r.Tipo_de_Riego||'—'; if(!byRiego[t]) byRiego[t]=0; byRiego[t]++; });
+          filteredKobo.forEach(r=>{ const t=r.Tipo_de_Riego||'—'; if(!byRiego[t]) byRiego[t]=0; byRiego[t]++; });
           return `
-            <div class="sum-row"><span class="sum-key">Total registros</span><span class="sum-val">${KOBO_DATA.length}</span></div>
+            <div class="sum-row"><span class="sum-key">Total registros</span><span class="sum-val">${filteredKobo.length}</span></div>
             ${Object.entries(byRiego).map(([t,c])=>`<div class="sum-row"><span class="sum-key">Riego: ${t}</span><span class="sum-val">${c}</span></div>`).join('')}
             <div class="sum-card-title" style="margin-top:10px">Viveros en Kobo</div>
             ${Object.entries(byVivero).slice(0,6).map(([vv,c])=>`<div class="sum-row"><span class="sum-key" title="${vv}">${vv.length>28?vv.slice(0,26)+'…':vv}</span><span class="sum-val">${c}</span></div>`).join('')}
@@ -1088,7 +1100,7 @@ function buildCatA() {
 function buildCatB() {
   const rows = filteredBase;
   const koboByStudy = {};
-  KOBO_DATA.forEach(r => {
+  filteredKobo.forEach(r => {
     const ns = normalizeStudy(r.Vivero_Estudio||'');
     if (!koboByStudy[ns]) koboByStudy[ns] = [];
     koboByStudy[ns].push(r);
@@ -1152,7 +1164,7 @@ function buildCatD() {
 }
 
 function buildCatE() {
-  const rows = KOBO_DATA;
+  const rows = filteredKobo;
   const cols = [
     { key:'Vivero_Estudio', label:'Vivero/Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
     { key:'Fecha',          label:'Fecha',          render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
@@ -1163,7 +1175,7 @@ function buildCatE() {
     { key:'Fecha Envío',    label:'Fecha Envío',    render:(v)=>v?`<span class="td-mono" style="font-size:0.68rem;color:var(--text2)">${v}</span>`:`<span class="empty-val">—</span>` },
   ];
   buildTable('tableE','pagE','tabsE', rows, cols);
-  document.getElementById('nb-E').textContent = rows.length.toLocaleString();
+  document.getElementById('nb-E').textContent = filteredKobo.length.toLocaleString();
 }
 
 function buildCatF() {
