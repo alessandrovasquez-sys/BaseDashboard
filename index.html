@@ -45,6 +45,77 @@
   .btn-reload { background: var(--surface2); border: 1px solid var(--border); color: var(--text2); padding: 6px 14px; border-radius: 6px; font-size: 0.75rem; cursor: pointer; font-family: var(--font-mono); transition: all .2s; }
   .btn-reload:hover { border-color: var(--accent2); color: var(--accent2); }
 
+  /* ===================== BANNER DE CAMBIOS ===================== */
+  #changesBanner {
+    display: none;
+    margin: 0;
+    border-bottom: 1px solid var(--border);
+    background: #161b22;
+  }
+  .cb-header {
+    display: flex; align-items: center; justify-content: space-between;
+    padding: 12px 28px; cursor: pointer; gap: 14px;
+    transition: background .15s;
+  }
+  .cb-header:hover { background: #1c2330; }
+  .cb-header-left { display: flex; align-items: center; gap: 12px; }
+  .cb-icon { font-size: 1.1rem; }
+  .cb-title { font-size: 0.82rem; font-weight: 700; }
+  .cb-pills { display: flex; gap: 6px; flex-wrap: wrap; }
+  .cb-pill {
+    padding: 2px 10px; border-radius: 999px; font-size: 0.68rem;
+    font-weight: 700; font-family: var(--font-mono);
+  }
+  .cb-pill-yellow { background: rgba(210,153,34,.2); color: #e3b341; border: 1px solid rgba(210,153,34,.3); }
+  .cb-pill-green  { background: rgba(46,160,67,.2);  color: #3fb950; border: 1px solid rgba(46,160,67,.3); }
+  .cb-pill-red    { background: rgba(248,81,73,.2);   color: #ff7b72; border: 1px solid rgba(248,81,73,.3); }
+  .cb-pill-blue   { background: rgba(56,139,253,.2);  color: #79c0ff; border: 1px solid rgba(56,139,253,.3); }
+  .cb-toggle-btn {
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    padding: 4px 12px; border-radius: 6px; font-size: 0.72rem; cursor: pointer;
+    font-family: var(--font-mono); white-space: nowrap; transition: all .15s;
+    display: flex; align-items: center; gap: 6px;
+  }
+  .cb-toggle-btn:hover { border-color: var(--accent2); color: var(--accent2); }
+  .cb-detail {
+    display: none;
+    padding: 0 28px 16px;
+    border-top: 1px solid var(--border);
+    background: #0d1117;
+  }
+  .cb-detail.open { display: block; }
+  .cb-fecha-ant {
+    font-size: 0.68rem; color: var(--text2); font-family: var(--font-mono);
+    padding: 8px 0 10px;
+  }
+  .cb-table { width: 100%; border-collapse: collapse; font-size: 0.75rem; }
+  .cb-table th {
+    padding: 7px 12px; text-align: left; color: var(--text2);
+    font-family: var(--font-mono); font-size: 0.65rem; letter-spacing: .5px;
+    text-transform: uppercase; border-bottom: 1px solid var(--border);
+    background: var(--surface2);
+  }
+  .cb-table td {
+    padding: 6px 12px; border-bottom: 1px solid rgba(48,54,61,0.5);
+    color: var(--text);
+  }
+  .cb-table tr:last-child td { border-bottom: none; }
+  .cb-table tr:hover td { background: rgba(255,255,255,.02); }
+  .cb-delta-pos { color: #3fb950; font-family: var(--font-mono); font-weight: 700; }
+  .cb-delta-neg { color: #ff7b72; font-family: var(--font-mono); font-weight: 700; }
+  .cb-new-est  { color: #3fb950; font-weight: 600; }
+  .cb-del-est  { color: #ff7b72; font-weight: 600; text-decoration: line-through; }
+  .cb-dismiss {
+    margin-top: 12px; text-align: right;
+  }
+  .cb-dismiss button {
+    background: none; border: 1px solid var(--border); color: var(--text2);
+    padding: 5px 14px; border-radius: 6px; font-size: 0.72rem; cursor: pointer;
+    font-family: var(--font-mono);
+  }
+  .cb-dismiss button:hover { border-color: var(--accent4); color: var(--accent4); }
+  /* ============================================================= */
+
   /* LAYOUT */
   .layout { display: flex; min-height: calc(100vh - 73px); }
 
@@ -164,6 +235,8 @@
     .sidebar-label { display: none; }
     .nav-item { padding: 6px 10px; }
     .main { padding: 14px; }
+    .cb-header { padding: 10px 14px; }
+    .cb-detail { padding: 0 14px 12px; }
   }
 </style>
 </head>
@@ -183,6 +256,49 @@
     <button class="btn-reload" onclick="loadAll()">↻ Actualizar</button>
   </div>
 </header>
+
+<!-- ==================== BANNER DE CAMBIOS ==================== -->
+<div id="changesBanner">
+  <div class="cb-header" onclick="toggleCBDetail()">
+    <div class="cb-header-left">
+      <span class="cb-icon">⚠️</span>
+      <span class="cb-title" id="cbTitle">Cambios detectados vs última visita</span>
+      <div class="cb-pills" id="cbPills"></div>
+    </div>
+    <button class="cb-toggle-btn" id="cbToggleBtn">
+      <span id="cbToggleArrow">▼</span> Ver detalle
+    </button>
+  </div>
+  <div class="cb-detail" id="cbDetail">
+    <div class="cb-fecha-ant" id="cbFechaAnt"></div>
+    <div style="overflow-x:auto;border-radius:8px;border:1px solid var(--border)">
+      <table class="cb-table">
+        <thead>
+          <tr>
+            <th>Estudio</th>
+            <th>Métrica</th>
+            <th>Antes</th>
+            <th>Ahora</th>
+            <th>Δ</th>
+          </tr>
+        </thead>
+        <tbody id="cbTableBody"></tbody>
+      </table>
+    </div>
+    <div id="cbEstudiosNuevos" style="margin-top:12px;display:none">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-family:var(--font-mono)">Estudios nuevos detectados</div>
+      <div id="cbEstudiosNuevosList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div id="cbEstudiosBorrados" style="margin-top:12px;display:none">
+      <div style="font-size:0.72rem;font-weight:700;color:var(--text2);text-transform:uppercase;letter-spacing:.5px;margin-bottom:6px;font-family:var(--font-mono)">Estudios no encontrados esta carga</div>
+      <div id="cbEstudiosBorradosList" style="display:flex;flex-wrap:wrap;gap:6px"></div>
+    </div>
+    <div class="cb-dismiss">
+      <button onclick="dismissBanner()">✕ Marcar como visto</button>
+    </div>
+  </div>
+</div>
+<!-- =========================================================== -->
 
 <div class="layout">
   <!-- SIDEBAR -->
@@ -253,9 +369,7 @@
         <select id="fLocation" onchange="applyFilters()"><option value="">Todos</option></select>
         <input id="fSearch" type="text" placeholder="🔍 Buscar designación, serie..." oninput="applyFilters()"/>
       </div>
-
       <div class="kpi-row" id="kpiRow"></div>
-
       <div class="sum-grid" id="sumGrid"></div>
     </div>
 
@@ -428,15 +542,165 @@ let KOBO_DATA = [];
 let filteredBase = [];
 let currentPage = 'overview';
 const PAGE_SIZE = 100;
-let pages = {};
 
-// URL config (persisted in localStorage)
 const CONFIG_KEY = 'dash_breeding_config';
+const SNAP_KEY   = 'dash_breeding_snapshot';
+const DISMISS_KEY = 'dash_breeding_dismissed';
 
 function getConfig() {
   try { return JSON.parse(localStorage.getItem(CONFIG_KEY) || '{}'); } catch(e) { return {}; }
 }
 function setConfig(obj) { localStorage.setItem(CONFIG_KEY, JSON.stringify(obj)); }
+
+// ===================================================================
+// SISTEMA DE DETECCIÓN DE CAMBIOS (banner)
+// ===================================================================
+
+function buildSnapshot(baseData) {
+  const snap = {
+    fecha: new Date().toISOString(),
+    totalRows: baseData.length,
+    estudios: [...new Set(baseData.map(r => r.EXPERIMENTO).filter(Boolean))].sort(),
+    porEstudio: {}
+  };
+  snap.estudios.forEach(est => {
+    const rows = baseData.filter(r => r.EXPERIMENTO === est);
+    snap.porEstudio[est] = {
+      total:    rows.length,
+      conDFF:   rows.filter(r => r.DFF   && r.DFF   !== '').length,
+      conScore: rows.filter(r => r.SCORE_P && r.SCORE_P !== '').length,
+      conMaz:   rows.filter(r => r.MAZ_COS_auto && r.MAZ_COS_auto !== '').length,
+      conDFM:   rows.filter(r => r.DFM   && r.DFM   !== '').length,
+    };
+  });
+  return snap;
+}
+
+function saveSnapshot(baseData) {
+  try { localStorage.setItem(SNAP_KEY, JSON.stringify(buildSnapshot(baseData))); } catch(e) {}
+}
+
+function detectarCambiosDash(baseData) {
+  let prev;
+  try {
+    const raw = localStorage.getItem(SNAP_KEY);
+    if (!raw) return null;
+    prev = JSON.parse(raw);
+  } catch(e) { return null; }
+
+  // Si el usuario ya marcó como visto ESTE snapshot, no mostrar
+  try {
+    const dismissed = localStorage.getItem(DISMISS_KEY);
+    if (dismissed === prev.fecha) return null;
+  } catch(e) {}
+
+  const current = buildSnapshot(baseData);
+  const diffs = [];
+  const labels = { total: 'Plots totales', conDFF: 'Con DFF', conDFM: 'Con DFM', conScore: 'Con SCORE_P', conMaz: 'Con MAZ_COS' };
+
+  // Diferencias por estudio
+  current.estudios.forEach(est => {
+    const a = current.porEstudio[est];
+    const p = prev.porEstudio[est];
+    if (!p) return; // nuevo, se muestra aparte
+    Object.keys(labels).forEach(key => {
+      if (a[key] !== p[key]) {
+        diffs.push({ est, metrica: labels[key], antes: p[key], ahora: a[key], delta: a[key] - p[key] });
+      }
+    });
+  });
+
+  const estudiosNuevos   = current.estudios.filter(e => !prev.estudios.includes(e));
+  const estudiosBorrados = prev.estudios.filter(e => !current.estudios.includes(e));
+  const rowsDelta = current.totalRows - prev.totalRows;
+
+  if (diffs.length === 0 && estudiosNuevos.length === 0 && estudiosBorrados.length === 0) return null;
+
+  return { fechaAnterior: prev.fecha, rowsDelta, estudiosNuevos, estudiosBorrados, diffs };
+}
+
+function mostrarBanner(cambios) {
+  const banner = document.getElementById('changesBanner');
+  if (!cambios) { banner.style.display = 'none'; return; }
+
+  banner.style.display = 'block';
+
+  // Construir pills de resumen
+  const pills = [];
+  if (cambios.rowsDelta !== 0) {
+    const cls = cambios.rowsDelta > 0 ? 'cb-pill-green' : 'cb-pill-red';
+    const sign = cambios.rowsDelta > 0 ? '+' : '';
+    pills.push(`<span class="cb-pill ${cls}">${sign}${cambios.rowsDelta} registros</span>`);
+  }
+  if (cambios.diffs.length > 0) {
+    pills.push(`<span class="cb-pill cb-pill-yellow">${cambios.diffs.length} métricas modificadas</span>`);
+  }
+  if (cambios.estudiosNuevos.length > 0) {
+    pills.push(`<span class="cb-pill cb-pill-green">+${cambios.estudiosNuevos.length} estudio${cambios.estudiosNuevos.length>1?'s':''} nuevo${cambios.estudiosNuevos.length>1?'s':''}</span>`);
+  }
+  if (cambios.estudiosBorrados.length > 0) {
+    pills.push(`<span class="cb-pill cb-pill-red">−${cambios.estudiosBorrados.length} estudio${cambios.estudiosBorrados.length>1?'s':''}</span>`);
+  }
+  document.getElementById('cbPills').innerHTML = pills.join('');
+
+  // Fecha anterior
+  const fechaAnt = new Date(cambios.fechaAnterior);
+  document.getElementById('cbFechaAnt').textContent =
+    `Comparado con la carga del: ${fechaAnt.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'})} a las ${fechaAnt.toLocaleTimeString('es-ES')}`;
+
+  // Tabla de detalle
+  const tbody = document.getElementById('cbTableBody');
+  if (cambios.diffs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text2)">Sin cambios en métricas de estudios existentes.</td></tr>`;
+  } else {
+    tbody.innerHTML = cambios.diffs.map(d => {
+      const deltaClass = d.delta > 0 ? 'cb-delta-pos' : 'cb-delta-neg';
+      const deltaSign  = d.delta > 0 ? '+' : '';
+      return `<tr>
+        <td><span style="font-family:var(--font-mono);font-size:0.7rem">${d.est.length > 35 ? d.est.slice(0,33)+'…' : d.est}</span></td>
+        <td><span class="badge badge-blue">${d.metrica}</span></td>
+        <td style="font-family:var(--font-mono);color:var(--text2)">${d.antes.toLocaleString()}</td>
+        <td style="font-family:var(--font-mono);color:var(--text)">${d.ahora.toLocaleString()}</td>
+        <td class="${deltaClass}">${deltaSign}${d.delta}</td>
+      </tr>`;
+    }).join('');
+  }
+
+  // Estudios nuevos
+  if (cambios.estudiosNuevos.length > 0) {
+    document.getElementById('cbEstudiosNuevos').style.display = 'block';
+    document.getElementById('cbEstudiosNuevosList').innerHTML =
+      cambios.estudiosNuevos.map(e => `<span class="badge badge-green cb-new-est">${e}</span>`).join('');
+  }
+
+  // Estudios borrados
+  if (cambios.estudiosBorrados.length > 0) {
+    document.getElementById('cbEstudiosBorrados').style.display = 'block';
+    document.getElementById('cbEstudiosBorradosList').innerHTML =
+      cambios.estudiosBorrados.map(e => `<span class="badge badge-red">${e}</span>`).join('');
+  }
+}
+
+function toggleCBDetail() {
+  const detail = document.getElementById('cbDetail');
+  const arrow  = document.getElementById('cbToggleArrow');
+  const btn    = document.getElementById('cbToggleBtn');
+  const isOpen = detail.classList.toggle('open');
+  arrow.textContent = isOpen ? '▲' : '▼';
+  btn.innerHTML = `<span>${isOpen ? '▲' : '▼'}</span> ${isOpen ? 'Ocultar' : 'Ver detalle'}`;
+}
+
+function dismissBanner() {
+  // Guarda la fecha del snapshot actual para no volver a mostrar este banner
+  try {
+    const raw = localStorage.getItem(SNAP_KEY);
+    if (raw) {
+      const snap = JSON.parse(raw);
+      localStorage.setItem(DISMISS_KEY, snap.fecha);
+    }
+  } catch(e) {}
+  document.getElementById('changesBanner').style.display = 'none';
+}
 
 // ===================================================================
 // CSV PARSER
@@ -478,9 +742,6 @@ async function fetchCSV(url) {
   return parseCSV(text);
 }
 
-// ===================================================================
-// STUDY NAME MATCHING (kobo vs base)
-// ===================================================================
 function normalizeStudy(s) {
   return s.toLowerCase()
     .replace(/_/g,'').replace(/\s/g,'')
@@ -494,24 +755,15 @@ function normalizeStudy(s) {
 async function loadAll() {
   setStatus('loading');
   document.getElementById('loadingDiv').style.display = 'flex';
-  // Hide all pages
   document.querySelectorAll('.page-content').forEach(p => p.classList.remove('active'));
+  document.getElementById('changesBanner').style.display = 'none';
 
   const cfg = getConfig();
-  let baseUrl = cfg.urlBase;
-  let koboUrl = cfg.urlKobo;
-
   try {
     const promises = [];
-    if (baseUrl) promises.push(fetchCSV(baseUrl).then(d => { BASE_DATA = d; }));
-    if (koboUrl) promises.push(fetchCSV(koboUrl).then(d => { KOBO_DATA = d; }));
-
-    if (promises.length === 0) {
-      // Use embedded data
-      await loadEmbedded();
-      return;
-    }
-
+    if (cfg.urlBase) promises.push(fetchCSV(cfg.urlBase).then(d => { BASE_DATA = d; }));
+    if (cfg.urlKobo) promises.push(fetchCSV(cfg.urlKobo).then(d => { KOBO_DATA = d; }));
+    if (promises.length === 0) { await loadEmbedded(); return; }
     await Promise.all(promises);
     finishLoad(true);
   } catch(e) {
@@ -522,7 +774,6 @@ async function loadAll() {
 
 async function loadEmbedded() {
   setStatus('local');
-  // Load from embedded CSV files via fetch (same origin)
   try {
     const [b, k] = await Promise.all([
       fetch('BaseDashboard_-_BASE.csv').then(r=>r.ok?r.text():null),
@@ -533,21 +784,26 @@ async function loadEmbedded() {
   } catch(e) {}
 
   if (BASE_DATA.length === 0) {
-    // Show config page with explanation
     document.getElementById('loadingDiv').style.display = 'none';
     showPage('config', null);
-    showBanner('configAlert', '⚠️ No se encontraron datos locales. Por favor configura las URLs de tus Google Sheets o coloca los archivos CSV en la misma carpeta que este archivo HTML.', 'warn');
+    showBanner('configAlert', '⚠️ No se encontraron datos locales. Por favor configura las URLs de tus Google Sheets.', 'warn');
     return;
   }
   finishLoad(false);
 }
 
 function finishLoad(fromRemote) {
+  // Detectar cambios vs snapshot anterior ANTES de guardar el nuevo
+  const cambios = detectarCambiosDash(BASE_DATA);
+  mostrarBanner(cambios);
+
+  // Guardar snapshot de esta carga
+  saveSnapshot(BASE_DATA);
+
   filteredBase = [...BASE_DATA];
   document.getElementById('loadingDiv').style.display = 'none';
   buildFilters();
   buildAllSections();
-  updateNBadges();
   setStatus(fromRemote ? 'online' : 'local');
   const now = new Date();
   document.getElementById('headerSub').textContent =
@@ -596,7 +852,6 @@ function applyFilters() {
     return true;
   });
   buildAllSections();
-  updateNBadges();
 }
 
 // ===================================================================
@@ -610,7 +865,6 @@ function showPage(id, el) {
   if (page) page.classList.add('active');
   if (el) el.classList.add('active');
   else {
-    // find by data
     document.querySelectorAll('.nav-item').forEach(n => {
       if (n.getAttribute('onclick') && n.getAttribute('onclick').includes("'" + id + "'")) n.classList.add('active');
     });
@@ -629,7 +883,6 @@ function numOrDash(val) {
   const n = parseFloat(val);
   return isNaN(n) ? val : n.toLocaleString('es-MX', {maximumFractionDigits:2});
 }
-
 function mkBar(val, max) {
   if (!val || val === '') return `<span class="empty-val">—</span>`;
   const n = parseFloat(val);
@@ -637,13 +890,11 @@ function mkBar(val, max) {
   const pct = Math.min(100, max ? (n/max)*100 : n);
   return `<div class="bar-cell"><div class="bar-bg"><div class="bar-fill" style="width:${pct}%"></div></div><span class="bar-num">${n}</span></div>`;
 }
-
 function bcBadge(stage) {
   if (!stage) return `<span class="empty-val">—</span>`;
   const cls = stage.startsWith('F') ? 'badge-blue' : stage.startsWith('BC') ? 'badge-yellow' : 'badge-gray';
   return `<span class="badge ${cls}">${stage}</span>`;
 }
-
 function entryBadge(t) {
   if (!t) return `<span class="empty-val">—</span>`;
   return `<span class="badge badge-green">${t}</span>`;
@@ -656,7 +907,6 @@ function buildOverview() {
   const data = filteredBase;
   if (data.length === 0) { document.getElementById('kpiRow').innerHTML = ''; document.getElementById('sumGrid').innerHTML = ''; return; }
 
-  // KPIs
   const studies = [...new Set(data.map(r=>r.EXPERIMENTO).filter(Boolean))];
   const designations = [...new Set(data.map(r=>r.DESIGNATION).filter(Boolean))];
   const withDFF = data.filter(r=>r.DFF && r.DFF!=='').length;
@@ -681,7 +931,6 @@ function buildOverview() {
       <div class="kpi-sub">${k.sub}</div>
     </div>`).join('');
 
-  // Summary cards
   const byStudy = {};
   data.forEach(r => { if(!byStudy[r.EXPERIMENTO]) byStudy[r.EXPERIMENTO]={count:0}; byStudy[r.EXPERIMENTO].count++; });
   const studyRows = Object.entries(byStudy).sort((a,b)=>b[1].count-a[1].count).slice(0,8);
@@ -693,7 +942,6 @@ function buildOverview() {
   const byEntryType = {};
   data.forEach(r => { const et = r.ENTRY_TYPE||'—'; if(!byEntryType[et]) byEntryType[et]=0; byEntryType[et]++; });
 
-  // Avg DFF, DFM
   const dffVals = data.map(r=>parseFloat(r.DFF)).filter(n=>!isNaN(n));
   const dfmVals = data.map(r=>parseFloat(r.DFM)).filter(n=>!isNaN(n));
   const avgDFF = dffVals.length ? (dffVals.reduce((a,b)=>a+b,0)/dffVals.length).toFixed(1) : '—';
@@ -711,7 +959,6 @@ function buildOverview() {
           </div>
         </div>`).join('')}
     </div>
-
     <div class="sum-card">
       <div class="sum-card-title">📍 Por Ubicación</div>
       ${Object.entries(byLoc).map(([l,d])=>`
@@ -723,7 +970,6 @@ function buildOverview() {
         <div class="sum-row"><span class="sum-key">${t}</span><span class="sum-val">${c.toLocaleString()}</span></div>
       `).join('')}
     </div>
-
     <div class="sum-card">
       <div class="sum-card-title">🌱 Fenología (promedio filtrado)</div>
       <div class="sum-row"><span class="sum-key">Promedio DFF</span><span class="sum-val">${avgDFF} días</span></div>
@@ -733,20 +979,19 @@ function buildOverview() {
       <div class="sum-row"><span class="sum-key">Rango DFF</span><span class="sum-val">${dffVals.length?Math.min(...dffVals)+' – '+Math.max(...dffVals):'—'}</span></div>
       <div class="sum-row"><span class="sum-key">Rango DFM</span><span class="sum-val">${dfmVals.length?Math.min(...dfmVals)+' – '+Math.max(...dfmVals):'—'}</span></div>
     </div>
-
     <div class="sum-card">
       <div class="sum-card-title">🌽 Kobo — Ambiente</div>
       ${KOBO_DATA.length === 0 ? '<div class="sum-row"><span class="sum-key" style="color:var(--text2)">Sin datos Kobo cargados</span></div>' :
         (() => {
           const byVivero = {};
-          KOBO_DATA.forEach(r=>{ const v=r.Vivero_Estudio||'—'; if(!byVivero[v]) byVivero[v]=0; byVivero[v]++; });
+          KOBO_DATA.forEach(r=>{ const vv=r.Vivero_Estudio||'—'; if(!byVivero[vv]) byVivero[vv]=0; byVivero[vv]++; });
           const byRiego = {};
           KOBO_DATA.forEach(r=>{ const t=r.Tipo_de_Riego||'—'; if(!byRiego[t]) byRiego[t]=0; byRiego[t]++; });
           return `
             <div class="sum-row"><span class="sum-key">Total registros</span><span class="sum-val">${KOBO_DATA.length}</span></div>
             ${Object.entries(byRiego).map(([t,c])=>`<div class="sum-row"><span class="sum-key">Riego: ${t}</span><span class="sum-val">${c}</span></div>`).join('')}
             <div class="sum-card-title" style="margin-top:10px">Viveros en Kobo</div>
-            ${Object.entries(byVivero).slice(0,6).map(([v,c])=>`<div class="sum-row"><span class="sum-key" title="${v}">${v.length>28?v.slice(0,26)+'…':v}</span><span class="sum-val">${c}</span></div>`).join('')}
+            ${Object.entries(byVivero).slice(0,6).map(([vv,c])=>`<div class="sum-row"><span class="sum-key" title="${vv}">${vv.length>28?vv.slice(0,26)+'…':vv}</span><span class="sum-val">${c}</span></div>`).join('')}
           `;
         })()
       }
@@ -757,22 +1002,16 @@ function buildOverview() {
 // ===================================================================
 // BUILD TABLE GENERIC
 // ===================================================================
-function buildTable(tableId, pagId, tabsId, rowsData, cols, studyGroups) {
+function buildTable(tableId, pagId, tabsId, rowsData, cols) {
   const studies = [...new Set(rowsData.map(r=>r.EXPERIMENTO||r.Vivero_Estudio||'—').filter(Boolean))].sort();
   const tabsEl = document.getElementById(tabsId);
-
-  // Build tabs (by study)
-  let activeStudy = null;
   if (studies.length > 1) {
     tabsEl.innerHTML = `<div class="tab active" onclick="filterTab(this,'${tableId}','${pagId}',null,rowsData${tableId},cols${tableId})">Todos (${rowsData.length.toLocaleString()})</div>` +
       studies.map(s => `<div class="tab" onclick="filterTab(this,'${tableId}','${pagId}','${s.replace(/'/g,"\\'")}',rowsData${tableId},cols${tableId})">${s.length>30?s.slice(0,28)+'…':s}</div>`).join('');
   } else {
     tabsEl.innerHTML = '';
   }
-
   renderTable(tableId, pagId, rowsData, cols, 0);
-
-  // Store refs globally for tab clicks
   window['rowsData'+tableId] = rowsData;
   window['cols'+tableId] = cols;
   window['currentRows'+tableId] = rowsData;
@@ -780,7 +1019,6 @@ function buildTable(tableId, pagId, tabsId, rowsData, cols, studyGroups) {
 }
 
 function filterTab(el, tableId, pagId, study, rows, cols) {
-  document.querySelectorAll(`#${tableId}`).forEach(()=>{});
   el.parentElement.querySelectorAll('.tab').forEach(t=>t.classList.remove('active'));
   el.classList.add('active');
   const filtered = study ? rows.filter(r=>(r.EXPERIMENTO||r.Vivero_Estudio||'—')===study) : rows;
@@ -793,13 +1031,10 @@ function renderTable(tableId, pagId, rows, cols, page) {
   const start = page * PAGE_SIZE;
   const pageRows = rows.slice(start, start + PAGE_SIZE);
   const table = document.getElementById(tableId);
-
   table.querySelector('thead').innerHTML = `<tr>${cols.map(c=>`<th>${c.label}</th>`).join('')}</tr>`;
   table.querySelector('tbody').innerHTML = pageRows.map(r =>
     `<tr>${cols.map(c => `<td>${c.render ? c.render(r[c.key], r) : v(r[c.key])}</td>`).join('')}</tr>`
   ).join('') || `<tr><td colspan="${cols.length}" style="text-align:center;padding:30px;color:var(--text2)">Sin datos para esta selección</td></tr>`;
-
-  // Paginator
   const totalPages = Math.ceil(rows.length / PAGE_SIZE);
   const pagEl = document.getElementById(pagId);
   if (totalPages <= 1) { pagEl.innerHTML = `<span>${rows.length.toLocaleString()} registros</span>`; return; }
@@ -818,187 +1053,148 @@ function goPage(tableId, pagId, page) {
 }
 
 // ===================================================================
-// CAT A — GERMOPLASMA
+// CATEGORÍAS
 // ===================================================================
 function buildCatA() {
-  const rows = filteredBase.filter(r =>
-    r.RecParent || r.DonnorParent || r.BC_stage || r.MostAdvanceStage || r.VCODE
-  );
+  const rows = filteredBase.filter(r => r.RecParent || r.DonnorParent || r.BC_stage || r.MostAdvanceStage || r.VCODE);
   const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v,r)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'VCODE', label:'VCODE', render:(v)=>v?`<span class="badge badge-purple">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'RecParent', label:'RecParent', render:(v)=>v?`<span class="td-mono" style="font-size:0.7rem">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'DonnorParent', label:'DonnorParent', render:(v)=>v?`<span class="td-mono" style="font-size:0.7rem">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'BC_stage', label:'BC_stage', render:(v)=>bcBadge(v) },
-    { key:'MostAdvanceStage', label:'MostAdvStage', render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'ENTRY_TYPE', label:'EntryType', render:(v)=>entryBadge(v) },
+    { key:'EXPERIMENTO',     label:'Estudio',      render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'DESIGNATION',     label:'Designación',  render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'VCODE',           label:'VCODE',        render:(v)=>v?`<span class="badge badge-purple">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'RecParent',       label:'RecParent',    render:(v)=>v?`<span class="td-mono" style="font-size:0.7rem">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'DonnorParent',    label:'DonnorParent', render:(v)=>v?`<span class="td-mono" style="font-size:0.7rem">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'BC_stage',        label:'BC_stage',     render:(v)=>bcBadge(v) },
+    { key:'MostAdvanceStage',label:'MostAdvStage', render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'ENTRY_TYPE',      label:'EntryType',    render:(v)=>entryBadge(v) },
   ];
   buildTable('tableA','pagA','tabsA', rows, cols);
   document.getElementById('nb-A').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT B — FECHAS
-// ===================================================================
 function buildCatB() {
-  // These fields may not be in BASE directly; we show what we have
-  const dateFields = ['RoguingDate'];
   const rows = filteredBase;
-  const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'LOCATION_NAME', label:'Ubicación', render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'RoguingDate', label:'RoguingDate', render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'NIVEL', label:'Nivel', render:(v)=>v?`<span class="badge badge-gray">${v}</span>`:`<span class="empty-val">—</span>` },
-  ];
-
-  // Also show Kobo date data linked by study
   const koboByStudy = {};
   KOBO_DATA.forEach(r => {
     const ns = normalizeStudy(r.Vivero_Estudio||'');
     if (!koboByStudy[ns]) koboByStudy[ns] = [];
     koboByStudy[ns].push(r);
   });
-
-  // Add kobo fecha if match
   const enriched = rows.map(r => {
     const ns = normalizeStudy(r.EXPERIMENTO||'');
     const kobo = koboByStudy[ns]?.[0];
     return { ...r, _koboFecha: kobo?.Fecha||'', _koboEtapa: kobo?.Etapa||'' };
   });
-
-  const cols2 = [
-    ...cols,
-    { key:'_koboFecha', label:'Fecha Kobo', render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'_koboEtapa', label:'Etapa Kobo', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+  const cols = [
+    { key:'EXPERIMENTO',  label:'Estudio',    render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'DESIGNATION',  label:'Designación',render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'LOCATION_NAME',label:'Ubicación',  render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'RoguingDate',  label:'RoguingDate',render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'NIVEL',        label:'Nivel',      render:(v)=>v?`<span class="badge badge-gray">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'_koboFecha',   label:'Fecha Kobo', render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'_koboEtapa',   label:'Etapa Kobo', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
   ];
-
-  buildTable('tableB','pagB','tabsB', enriched, cols2);
+  buildTable('tableB','pagB','tabsB', enriched, cols);
   document.getElementById('nb-B').textContent = enriched.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT C — CAMPO / EXPERIMENTO
-// ===================================================================
 function buildCatC() {
   const rows = filteredBase;
   const maxNP = Math.max(...rows.map(r=>parseFloat(r.NPSEL)||0));
   const maxPC = Math.max(...rows.map(r=>parseFloat(r.PlantCount_V4V6)||0));
-
   const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'PLOT_CODE', label:'Plot', render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'PLANTS_VIRUSsn', label:'VIRUS', render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'PlantCount_V4V6', label:'PlantCount V4V6', render:(v)=>mkBar(v, maxPC) },
-    { key:'Plantas_FueraDeTipo', label:'FueraDeTipo', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'NPSEL', label:'NPSEL', render:(v)=>mkBar(v, maxNP) },
-    { key:'MAZ_COS_auto', label:'MazCos Auto', render:(v)=>numOrDash(v) },
-    { key:'MAZ_COS_cruzas', label:'MazCos Cruzas', render:(v)=>numOrDash(v) },
-    { key:'SCORE_P', label:'SCORE_P', render:(v,r)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'EXPERIMENTO',       label:'Estudio',         render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'PLOT_CODE',         label:'Plot',            render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
+    { key:'DESIGNATION',       label:'Designación',     render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'PLANTS_VIRUSsn',    label:'VIRUS',           render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'PlantCount_V4V6',   label:'PlantCount V4V6', render:(v)=>mkBar(v, maxPC) },
+    { key:'Plantas_FueraDeTipo',label:'FueraDeTipo',    render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'NPSEL',             label:'NPSEL',           render:(v)=>mkBar(v, maxNP) },
+    { key:'MAZ_COS_auto',      label:'MazCos Auto',     render:(v)=>numOrDash(v) },
+    { key:'MAZ_COS_cruzas',    label:'MazCos Cruzas',   render:(v)=>numOrDash(v) },
+    { key:'SCORE_P',  label:'SCORE_P',  render:(v)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
     { key:'SCORE_MZ', label:'SCORE_MZ', render:(v)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
   ];
   buildTable('tableC','pagC','tabsC', rows, cols);
   document.getElementById('nb-C').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT D — GENOMICA
-// ===================================================================
 function buildCatD() {
-  const qCols = ['VCODE','MAZ_PUDsn','COLOR_CORONAsn','CoronaColor_sn','CoronaColor_sn_ind','TIPO_GRANO','tamano_grano_sn','tamano_espiga'];
+  const qCols = ['VCODE','MAZ_PUDsn','COLOR_CORONAsn','CoronaColor_sn','TIPO_GRANO','tamano_grano_sn','tamano_espiga'];
   const rows = filteredBase.filter(r => qCols.some(c => r[c] && r[c] !== ''));
-
   const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'VCODE', label:'VCODE', render:(v)=>v?`<span class="badge badge-purple">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'BC_stage', label:'BC_stage', render:(v)=>bcBadge(v) },
-    { key:'COLOR_CORONAsn', label:'Color Corona', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'CoronaColor_sn', label:'CoronaColor', render:(v)=>v||`<span class="empty-val">—</span>` },
-    { key:'TIPO_GRANO', label:'Tipo Grano', render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'tamano_grano_sn', label:'Tamaño Grano', render:(v)=>v?`<span class="badge badge-green">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'tamano_espiga', label:'Tamaño Espiga', render:(v)=>v?`<span class="badge badge-green">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'MAZ_PUDsn', label:'MazPUD', render:(v)=>v||`<span class="empty-val">—</span>` },
+    { key:'EXPERIMENTO',    label:'Estudio',       render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'DESIGNATION',    label:'Designación',   render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'VCODE',          label:'VCODE',         render:(v)=>v?`<span class="badge badge-purple">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'BC_stage',       label:'BC_stage',      render:(v)=>bcBadge(v) },
+    { key:'COLOR_CORONAsn', label:'Color Corona',  render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'CoronaColor_sn', label:'CoronaColor',   render:(v)=>v||`<span class="empty-val">—</span>` },
+    { key:'TIPO_GRANO',     label:'Tipo Grano',    render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'tamano_grano_sn',label:'Tamaño Grano',  render:(v)=>v?`<span class="badge badge-green">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'tamano_espiga',  label:'Tamaño Espiga', render:(v)=>v?`<span class="badge badge-green">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'MAZ_PUDsn',      label:'MazPUD',        render:(v)=>v||`<span class="empty-val">—</span>` },
   ];
   buildTable('tableD','pagD','tabsD', rows, cols);
   document.getElementById('nb-D').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT E — AMBIENTE (KOBO)
-// ===================================================================
 function buildCatE() {
   const rows = KOBO_DATA;
   const cols = [
     { key:'Vivero_Estudio', label:'Vivero/Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'Fecha', label:'Fecha', render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'Fecha',          label:'Fecha',          render:(v)=>v?`<span class="td-mono" style="color:var(--accent3)">${v}</span>`:`<span class="empty-val">—</span>` },
     { key:'Riego_efectivo', label:'Riego Efectivo', render:(v)=>v==='si'?`<span class="badge badge-green">Sí</span>`:v==='no'?`<span class="badge badge-red">No</span>`:`<span class="empty-val">—</span>` },
-    { key:'Tipo_de_Riego', label:'Tipo Riego', render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'Etapa', label:'Etapa', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'Razones', label:'Razones', render:(v)=>v||`<span class="empty-val">—</span>` },
-    { key:'Fecha Envío', label:'Fecha Envío', render:(v)=>v?`<span class="td-mono" style="font-size:0.68rem;color:var(--text2)">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'Tipo_de_Riego',  label:'Tipo Riego',     render:(v)=>v?`<span class="badge badge-blue">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'Etapa',          label:'Etapa',          render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'Razones',        label:'Razones',        render:(v)=>v||`<span class="empty-val">—</span>` },
+    { key:'Fecha Envío',    label:'Fecha Envío',    render:(v)=>v?`<span class="td-mono" style="font-size:0.68rem;color:var(--text2)">${v}</span>`:`<span class="empty-val">—</span>` },
   ];
   buildTable('tableE','pagE','tabsE', rows, cols);
   document.getElementById('nb-E').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT F — RENDIMIENTO
-// ===================================================================
 function buildCatF() {
   const rCols = ['MAZ_SEL_auto','MAZ_SEL_cruzas','MAZ_COS_auto','MAZ_COS_cruzas','COLOR_GRANO'];
   const rows = filteredBase.filter(r => rCols.some(c=>r[c]&&r[c]!==''));
-
   const maxAuto = Math.max(...rows.map(r=>parseFloat(r.MAZ_SEL_auto)||0));
   const maxCruz = Math.max(...rows.map(r=>parseFloat(r.MAZ_SEL_cruzas)||0));
-
   const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'PLOT_CODE', label:'Plot', render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
-    { key:'COLOR_GRANO', label:'Color Grano', render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'MAZ_COS_auto', label:'MazCos Auto', render:(v)=>mkBar(v,maxAuto) },
-    { key:'MAZ_COS_cruzas', label:'MazCos Cruzas', render:(v)=>mkBar(v,maxCruz) },
-    { key:'MAZ_SEL_auto', label:'MazSel Auto', render:(v)=>mkBar(v,maxAuto) },
-    { key:'MAZ_SEL_cruzas', label:'MazSel Cruzas', render:(v)=>mkBar(v,maxCruz) },
-    { key:'MAZ_SEL_cruzasBK', label:'MazSel BK', render:(v)=>numOrDash(v) },
-    { key:'MAZ_SEL_cruzasOP', label:'MazSel OP', render:(v)=>numOrDash(v) },
+    { key:'EXPERIMENTO',     label:'Estudio',       render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'DESIGNATION',     label:'Designación',   render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'PLOT_CODE',       label:'Plot',          render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
+    { key:'COLOR_GRANO',     label:'Color Grano',   render:(v)=>v?`<span class="badge badge-yellow">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'MAZ_COS_auto',    label:'MazCos Auto',   render:(v)=>mkBar(v,maxAuto) },
+    { key:'MAZ_COS_cruzas',  label:'MazCos Cruzas', render:(v)=>mkBar(v,maxCruz) },
+    { key:'MAZ_SEL_auto',    label:'MazSel Auto',   render:(v)=>mkBar(v,maxAuto) },
+    { key:'MAZ_SEL_cruzas',  label:'MazSel Cruzas', render:(v)=>mkBar(v,maxCruz) },
+    { key:'MAZ_SEL_cruzasBK',label:'MazSel BK',     render:(v)=>numOrDash(v) },
+    { key:'MAZ_SEL_cruzasOP',label:'MazSel OP',     render:(v)=>numOrDash(v) },
   ];
   buildTable('tableF','pagF','tabsF', rows, cols);
   document.getElementById('nb-F').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// CAT G — FENOLOGIA / SELECCION
-// ===================================================================
 function buildCatG() {
   const rows = filteredBase.filter(r => r.DFF || r.DFM || r.SCORE_P || r.ALT_P_cm);
   const maxAltP = Math.max(...rows.map(r=>parseFloat(r.ALT_P_cm)||0));
   const maxAltM = Math.max(...rows.map(r=>parseFloat(r.ALT_MZ_cm)||0));
-
   const cols = [
-    { key:'EXPERIMENTO', label:'Estudio', render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
-    { key:'DESIGNATION', label:'Designación', render:(v)=>`<span class="td-em">${v||'—'}</span>` },
-    { key:'PLOT_CODE', label:'Plot', render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
-    { key:'DFF', label:'DFF (días)', render:(v)=>mkBar(v,120) },
-    { key:'DFM', label:'DFM (días)', render:(v)=>mkBar(v,120) },
-    { key:'ALT_P_cm', label:'Alt. Planta cm', render:(v)=>mkBar(v,maxAltP) },
-    { key:'ALT_MZ_cm', label:'Alt. Mazorca cm', render:(v)=>mkBar(v,maxAltM) },
-    { key:'SCORE_P', label:'SCORE_P', render:(v)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'EXPERIMENTO',        label:'Estudio',       render:(v)=>`<span class="td-mono" style="font-size:0.68rem">${v||'—'}</span>` },
+    { key:'DESIGNATION',        label:'Designación',   render:(v)=>`<span class="td-em">${v||'—'}</span>` },
+    { key:'PLOT_CODE',          label:'Plot',          render:(v)=>`<span class="badge badge-gray">${v||'—'}</span>` },
+    { key:'DFF',                label:'DFF (días)',    render:(v)=>mkBar(v,120) },
+    { key:'DFM',                label:'DFM (días)',    render:(v)=>mkBar(v,120) },
+    { key:'ALT_P_cm',           label:'Alt. Planta cm',render:(v)=>mkBar(v,maxAltP) },
+    { key:'ALT_MZ_cm',          label:'Alt. Mazorca cm',render:(v)=>mkBar(v,maxAltM) },
+    { key:'SCORE_P',  label:'SCORE_P',  render:(v)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
     { key:'SCORE_MZ', label:'SCORE_MZ', render:(v)=>v?`<span class="badge ${parseInt(v)>=7?'badge-green':parseInt(v)>=5?'badge-yellow':'badge-red'}">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'Plantas_FueraDeTipo', label:'FueraDeTipo', render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'PLANTS_VIRUSsn', label:'Virus', render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
-    { key:'PlantsPollinated', label:'Polinizadas', render:(v)=>numOrDash(v) },
+    { key:'Plantas_FueraDeTipo',label:'FueraDeTipo',   render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'PLANTS_VIRUSsn',     label:'Virus',         render:(v)=>v?`<span class="badge badge-red">${v}</span>`:`<span class="empty-val">—</span>` },
+    { key:'PlantsPollinated',   label:'Polinizadas',   render:(v)=>numOrDash(v) },
   ];
   buildTable('tableG','pagG','tabsG', rows, cols);
   document.getElementById('nb-G').textContent = rows.length.toLocaleString();
 }
 
-// ===================================================================
-// BUILD ALL
-// ===================================================================
 function buildAllSections() {
   buildOverview();
   buildCatA();
@@ -1008,10 +1204,6 @@ function buildAllSections() {
   buildCatE();
   buildCatF();
   buildCatG();
-}
-
-function updateNBadges() {
-  // already handled in each buildCat
 }
 
 // ===================================================================
@@ -1041,7 +1233,7 @@ function init() {
   loadAll();
 }
 
-// Auto-reload every 5 minutes if online
+// Auto-reload cada 5 minutos si hay URLs configuradas
 setInterval(() => {
   const cfg = getConfig();
   if (cfg.urlBase || cfg.urlKobo) loadAll();
