@@ -752,9 +752,10 @@ async function fetchCSV(url, strict = false) {
 
 function normalizeStudy(s) {
   return s.toLowerCase()
-    .replace(/_/g,'').replace(/\s/g,'')
-    .replace('cimmt','cimmyt')
-    .replace(/[_\-]/g,'');
+    .replace(/[_\-\s]/g,'')   // quitar guiones, underscores y espacios
+    .replace(/cimmt$/, 'cimmyt') // corregir typo
+    .replace(/_?\d+$/, '')      // quitar sufijo numérico final (_1, _2, etc.)
+    .replace(/\d+$/, '');       // por si quedó sin guion (ej. ...2026a1 → ...2026a)
 }
 
 // ===================================================================
