@@ -253,7 +253,7 @@
   <div class="header-right">
     <div class="status-dot" id="statusDot" style="background:#888;box-shadow:none"></div>
     <span class="status-text" id="statusText">offline</span>
-    <button class="btn-reload" onclick="loadAll()">↻ Actualizar</button>
+    <button class="btn-reload" id="btnReload" onclick="manualReload()">↻ Actualizar</button>
   </div>
 </header>
 
@@ -561,17 +561,28 @@ function buildSnapshot(baseData) {
   const snap = {
     fecha: new Date().toISOString(),
     totalRows: baseData.length,
+    columnas: baseData.length > 0 ? Object.keys(baseData[0]).sort() : [],
     estudios: [...new Set(baseData.map(r => r.EXPERIMENTO).filter(Boolean))].sort(),
     porEstudio: {}
   };
   snap.estudios.forEach(est => {
     const rows = baseData.filter(r => r.EXPERIMENTO === est);
+    // Contar plots (PLANT_NO vacío) y plantas (PLANT_NO con valor)
+    const plots   = rows.filter(r => !r.PLANT_NO || r.PLANT_NO.trim() === '').length;
+    const plantas = rows.filter(r =>  r.PLANT_NO && r.PLANT_NO.trim() !== '').length;
+    // Contar columnas con datos en este estudio
+    const colsConDatos = snap.columnas.filter(col =>
+      rows.some(r => r[col] && r[col].trim() !== '')
+    );
     snap.porEstudio[est] = {
-      total:    rows.length,
-      conDFF:   rows.filter(r => r.DFF   && r.DFF   !== '').length,
-      conScore: rows.filter(r => r.SCORE_P && r.SCORE_P !== '').length,
-      conMaz:   rows.filter(r => r.MAZ_COS_auto && r.MAZ_COS_auto !== '').length,
-      conDFM:   rows.filter(r => r.DFM   && r.DFM   !== '').length,
+      total:       rows.length,
+      plots:       plots,
+      plantas:     plantas,
+      conDFF:      rows.filter(r => r.DFF      && r.DFF      !== '').length,
+      conScore:    rows.filter(r => r.SCORE_P  && r.SCORE_P  !== '').length,
+      conMaz:      rows.filter(r => r.MAZ_COS_auto && r.MAZ_COS_auto !== '').length,
+      conDFM:      rows.filter(r => r.DFM      && r.DFM      !== '').length,
+      colsConDatos: colsConDatos.length,
     };
   });
   return snap;
@@ -596,28 +607,46 @@ function detectarCambiosDash(baseData) {
   } catch(e) {}
 
   const current = buildSnapshot(baseData);
-  const diffs = [];
-  const labels = { total: 'Plots totales', conDFF: 'Con DFF', conDFM: 'Con DFM', conScore: 'Con SCORE_P', conMaz: 'Con MAZ_COS' };
+
+  // Detectar columnas nuevas o eliminadas
+  const colsAntes  = prev.columnas || [];
+  const colsAhora  = current.columnas || [];
+  const colsNuevas    = colsAhora.filter(c => !colsAntes.includes(c));
+  const colsEliminadas = colsAntes.filter(c => !colsAhora.includes(c));
 
   // Diferencias por estudio
+  const diffs = [];
+  const labels = {
+    total:    'Registros totales',
+    plots:    'Plots',
+    plantas:  'Plantas',
+    conDFF:   'Con DFF',
+    conDFM:   'Con DFM',
+    conScore: 'Con SCORE_P',
+    conMaz:   'Con MAZ_COS',
+    colsConDatos: 'Columnas con datos',
+  };
+
   current.estudios.forEach(est => {
     const a = current.porEstudio[est];
     const p = prev.porEstudio[est];
     if (!p) return; // nuevo, se muestra aparte
     Object.keys(labels).forEach(key => {
-      if (a[key] !== p[key]) {
+      if (a[key] !== undefined && p[key] !== undefined && a[key] !== p[key]) {
         diffs.push({ est, metrica: labels[key], antes: p[key], ahora: a[key], delta: a[key] - p[key] });
       }
     });
   });
 
-  const estudiosNuevos   = current.estudios.filter(e => !prev.estudios.includes(e));
-  const estudiosBorrados = prev.estudios.filter(e => !current.estudios.includes(e));
-  const rowsDelta = current.totalRows - prev.totalRows;
+  const estudiosNuevos    = current.estudios.filter(e => !prev.estudios.includes(e));
+  const estudiosBorrados  = prev.estudios.filter(e => !current.estudios.includes(e));
+  const rowsDelta         = current.totalRows - prev.totalRows;
 
-  if (diffs.length === 0 && estudiosNuevos.length === 0 && estudiosBorrados.length === 0) return null;
+  if (diffs.length === 0 && estudiosNuevos.length === 0 && estudiosBorrados.length === 0
+      && colsNuevas.length === 0 && colsEliminadas.length === 0) return null;
 
-  return { fechaAnterior: prev.fecha, rowsDelta, estudiosNuevos, estudiosBorrados, diffs };
+  return { fechaAnterior: prev.fecha, rowsDelta, estudiosNuevos, estudiosBorrados,
+           diffs, colsNuevas, colsEliminadas };
 }
 
 function mostrarBanner(cambios) {
@@ -626,15 +655,18 @@ function mostrarBanner(cambios) {
 
   banner.style.display = 'block';
 
-  // Construir pills de resumen
+  // Pills de resumen
   const pills = [];
   if (cambios.rowsDelta !== 0) {
     const cls = cambios.rowsDelta > 0 ? 'cb-pill-green' : 'cb-pill-red';
-    const sign = cambios.rowsDelta > 0 ? '+' : '';
-    pills.push(`<span class="cb-pill ${cls}">${sign}${cambios.rowsDelta} registros</span>`);
+    pills.push(`<span class="cb-pill ${cls}">${cambios.rowsDelta > 0 ? '+' : ''}${cambios.rowsDelta.toLocaleString()} registros</span>`);
   }
   if (cambios.diffs.length > 0) {
-    pills.push(`<span class="cb-pill cb-pill-yellow">${cambios.diffs.length} métricas modificadas</span>`);
+    const estudiosAfectados = [...new Set(cambios.diffs.map(d => d.est))].length;
+    pills.push(`<span class="cb-pill cb-pill-yellow">📊 ${estudiosAfectados} estudio${estudiosAfectados>1?'s':''} con cambios</span>`);
+  }
+  if (cambios.colsNuevas && cambios.colsNuevas.length > 0) {
+    pills.push(`<span class="cb-pill cb-pill-blue">+${cambios.colsNuevas.length} columna${cambios.colsNuevas.length>1?'s':''} nueva${cambios.colsNuevas.length>1?'s':''}</span>`);
   }
   if (cambios.estudiosNuevos.length > 0) {
     pills.push(`<span class="cb-pill cb-pill-green">+${cambios.estudiosNuevos.length} estudio${cambios.estudiosNuevos.length>1?'s':''} nuevo${cambios.estudiosNuevos.length>1?'s':''}</span>`);
@@ -644,41 +676,71 @@ function mostrarBanner(cambios) {
   }
   document.getElementById('cbPills').innerHTML = pills.join('');
 
-  // Fecha anterior
+  // Fecha de referencia
   const fechaAnt = new Date(cambios.fechaAnterior);
-  document.getElementById('cbFechaAnt').textContent =
-    `Comparado con la carga del: ${fechaAnt.toLocaleDateString('es-ES', {weekday:'long', year:'numeric', month:'long', day:'numeric'})} a las ${fechaAnt.toLocaleTimeString('es-ES')}`;
+  document.getElementById('cbFechaAnt').innerHTML =
+    `📅 Comparado con tu última revisión: <b>${fechaAnt.toLocaleDateString('es-ES',
+      {weekday:'long',year:'numeric',month:'long',day:'numeric'})} a las ${fechaAnt.toLocaleTimeString('es-ES')}</b>`;
 
-  // Tabla de detalle
-  const tbody = document.getElementById('cbTableBody');
-  if (cambios.diffs.length === 0) {
-    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text2)">Sin cambios en métricas de estudios existentes.</td></tr>`;
+  // Columnas nuevas
+  const colsNuevasDiv  = document.getElementById('cbEstudiosNuevos');
+  const colsNuevasList = document.getElementById('cbEstudiosNuevosList');
+
+  if (cambios.colsNuevas && cambios.colsNuevas.length > 0) {
+    colsNuevasDiv.style.display = 'block';
+    colsNuevasDiv.querySelector('div').textContent = '🆕 Columnas nuevas detectadas en BASE';
+    colsNuevasList.innerHTML = cambios.colsNuevas.map(c =>
+      `<span class="badge badge-blue" style="font-family:var(--font-mono)">${c}</span>`).join('');
+  } else if (cambios.estudiosNuevos.length > 0) {
+    colsNuevasDiv.style.display = 'block';
+    colsNuevasDiv.querySelector('div').textContent = 'Estudios nuevos detectados';
+    colsNuevasList.innerHTML = cambios.estudiosNuevos.map(e =>
+      `<span class="badge badge-green cb-new-est">${e}</span>`).join('');
   } else {
-    tbody.innerHTML = cambios.diffs.map(d => {
-      const deltaClass = d.delta > 0 ? 'cb-delta-pos' : 'cb-delta-neg';
-      const deltaSign  = d.delta > 0 ? '+' : '';
-      return `<tr>
-        <td><span style="font-family:var(--font-mono);font-size:0.7rem">${d.est.length > 35 ? d.est.slice(0,33)+'…' : d.est}</span></td>
-        <td><span class="badge badge-blue">${d.metrica}</span></td>
-        <td style="font-family:var(--font-mono);color:var(--text2)">${d.antes.toLocaleString()}</td>
-        <td style="font-family:var(--font-mono);color:var(--text)">${d.ahora.toLocaleString()}</td>
-        <td class="${deltaClass}">${deltaSign}${d.delta}</td>
-      </tr>`;
-    }).join('');
+    colsNuevasDiv.style.display = 'none';
   }
 
-  // Estudios nuevos
-  if (cambios.estudiosNuevos.length > 0) {
-    document.getElementById('cbEstudiosNuevos').style.display = 'block';
-    document.getElementById('cbEstudiosNuevosList').innerHTML =
-      cambios.estudiosNuevos.map(e => `<span class="badge badge-green cb-new-est">${e}</span>`).join('');
-  }
-
-  // Estudios borrados
+  // Estudios eliminados
   if (cambios.estudiosBorrados.length > 0) {
     document.getElementById('cbEstudiosBorrados').style.display = 'block';
     document.getElementById('cbEstudiosBorradosList').innerHTML =
       cambios.estudiosBorrados.map(e => `<span class="badge badge-red">${e}</span>`).join('');
+  } else {
+    document.getElementById('cbEstudiosBorrados').style.display = 'none';
+  }
+
+  // Tabla resumen por estudio (agrupada)
+  const tbody = document.getElementById('cbTableBody');
+  if (cambios.diffs.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="5" style="text-align:center;padding:16px;color:var(--text2)">
+      Solo hay columnas o estudios nuevos — sin cambios en métricas existentes.</td></tr>`;
+  } else {
+    // Agrupar por estudio
+    const byEst = {};
+    cambios.diffs.forEach(d => {
+      if (!byEst[d.est]) byEst[d.est] = [];
+      byEst[d.est].push(d);
+    });
+    let html = '';
+    Object.entries(byEst).forEach(([est, ds]) => {
+      const estShort = est.length > 32 ? est.slice(0,30)+'…' : est;
+      html += `<tr style="background:var(--surface2)">
+        <td colspan="5" style="font-family:var(--font-mono);font-size:0.7rem;font-weight:700;
+          color:var(--accent2);padding:8px 12px;letter-spacing:.3px">📂 ${estShort}</td>
+      </tr>`;
+      ds.forEach(d => {
+        const dc = d.delta > 0 ? 'cb-delta-pos' : 'cb-delta-neg';
+        const ds2 = d.delta > 0 ? '+' : '';
+        html += `<tr>
+          <td style="padding-left:24px;color:var(--text2);font-size:0.72rem">↳</td>
+          <td><span class="badge badge-blue">${d.metrica}</span></td>
+          <td style="font-family:var(--font-mono);color:var(--text2)">${d.antes.toLocaleString()}</td>
+          <td style="font-family:var(--font-mono);color:var(--text)">${d.ahora.toLocaleString()}</td>
+          <td class="${dc}">${ds2}${d.delta.toLocaleString()}</td>
+        </tr>`;
+      });
+    });
+    tbody.innerHTML = html;
   }
 }
 
@@ -762,6 +824,18 @@ function normalizeStudy(s) {
 // ===================================================================
 // LOAD ALL DATA
 // ===================================================================
+function manualReload() {
+  const btn = document.getElementById('btnReload');
+  btn.textContent = '⟳ Cargando...';
+  btn.disabled = true;
+  btn.style.color = 'var(--accent2)';
+  loadAll().finally(() => {
+    btn.textContent = '↻ Actualizar';
+    btn.disabled = false;
+    btn.style.color = '';
+  });
+}
+
 async function loadAll() {
   setStatus('loading');
   document.getElementById('loadingDiv').style.display = 'flex';
@@ -1289,11 +1363,7 @@ function init() {
   loadAll();
 }
 
-// Auto-reload cada 5 minutos si hay URLs configuradas
-setInterval(() => {
-  const cfg = getConfig();
-  if (cfg.urlBase || cfg.urlKobo) loadAll();
-}, 5 * 60 * 1000);
+// Auto-reload desactivado — usar botón manual ↻ Actualizar
 
 window.addEventListener('DOMContentLoaded', init);
 </script>
