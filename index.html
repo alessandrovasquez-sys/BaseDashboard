@@ -1424,6 +1424,73 @@ function init() {
 // Auto-reload desactivado — usar botón manual ↻ Actualizar
 
 window.addEventListener('DOMContentLoaded', init);
+
+</script>
+</div><!--/appContent-->
+<script>
+  // =====================================================
+// LOGIN — JSONBin
+// =====================================================
+
+const LOGIN_BIN = '69b41d4cb7ec241ddc6679b3';
+const LOGIN_KEY = '$2a$10$sIxUKUhDKyvNvhdedW2XX.rYODI2GsngOLf.XWGOWlFQEcrQrIRga';
+const LOGIN_BASE =  'https://api.jsonbin.io/v3/b/' + LOGIN_BIN;
+const SESSION_KEY = 'dash_auth_2026';
+
+function checkSession(){
+  const s = sessionStorage.getItem(SESSION_KEY);
+  if(s === 'ok') showApp();
+
+}
+
+async function doLogin(){
+  const input = document.getElementById('loginInput');
+  const btn = document.getElementsById('loginBtn');
+  const err = document.getElementById('loginError');
+  const pass = input.value.trim();
+  if (!pass) return;
+
+  btn.disabled = true;
+  btn.textContent = 'Verificando....'
+  err.style.display = 'none';
+
+  try{
+    const r = await fetch(LOGIN_BASE + '/latest',{
+      headers: { 'X-Master-Key': LOGIN_KEY}
+    });
+    if(!r.ok) throw new Error('Sin conexión con el servidor de auth');
+    const data = await r.json();
+    const stored = data.record?.password || '';
+
+    if (pass === stored){
+      sessionStorage.setItem(SESSION_KEY, 'ok');
+      showApp();
+      } else {
+        err.style.display = 'block';
+        input.value = '';
+        input.focus();
+      }
+    } catch(e){
+      err.textContent = '⚠️ Error de Conexión. Intenta de nuevo';
+      err.style.display = 'block';
+    }
+    btn.disabled = false;
+    btn.textContent = 'Ingresar';
+  }
+
+  function showApp(){4
+    document.getElementById('loginOverlay').style.display = 'none';
+    document.getElementById('appContent').style.display = 'block';
+  }
+
+  // enter key en el input
+  document.getElementById('loginInput').addEventListener('keydown', e =>{
+    if(e.key === 'Enter') doLogin();
+  });
+
+  //verificar sesion activa al cargar
+  checkSession();
+
 </script>
 </body>
 </html>
